@@ -1,0 +1,163 @@
+---
+title: "Classification Tree 2"
+output: html_document
+date: '2022-06-13'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+library(tidyverse)
+library(tidymodels)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(rattle)
+library(RColorBrewer)
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+
+heart_disease = heart_disease %>% 
+  mutate(Sex = as_factor(Sex)) %>%
+  mutate(ChestPainType = as_factor(ChestPainType)) %>%
+  mutate(RestingECG = as_factor(RestingECG)) %>%
+  mutate(ExerciseAngina = as_factor(ExerciseAngina)) %>%
+  mutate(ST_Slope = as_factor(ST_Slope)) %>%
+  mutate(HeartDisease = as_factor(HeartDisease)) %>%
+  mutate(HeartDisease = fct_recode(HeartDisease, "NO" = "0", "Yes" = "1"))
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+
+```{r}
+set.seed(12345)
+heart_split = initial_split(heart_disease, prop = 0.7, strata = HeartDisease)
+train = training(heart_split)
+test = testing(heart_split)
+```
+
+```{r}
+
+heart_recipe = recipe(HeartDisease ~ Age + Sex + ChestPainType + RestingBP + Cholesterol + FastingBS + RestingECG + MaxHR + ExerciseAngina + Oldpeak + ST_Slope, data = train) %>%
+  step_dummy(all_nominal(), -all_outcomes())
+
+heart_recipe = recipe(HeartDisease  ~., train) %>%
+  step_dummy(all_nominal(), -all_outcomes())
+
+tree_model = decision_tree() %>%
+  set_engine("rpart", model = TRUE) %>%
+  set_mode("classification")
+
+heart_wflow =
+  workflow() %>%
+  add_model(tree_model) %>%
+  add_recipe(heart_recipe)
+
+tree_fit = fit(heart_wflow, train)
+
+
+```
+
+```{r}
+
+tree = tree_fit %>%
+  pull_workflow_fit() %>%
+  pluck("fit")
+
+fancyRpartPlot(tree)
+```
+
+```{r}
+tree_fit$fit$fit$fit$cptable
+```
+
+```{r}
+
+
+set.seed(123)
+folds = vfold_cv(train, v = 5)
+```
+
+```{r}
+
+heart_recipe = recipe(HeartDisease ~ Age + Sex + ChestPainType + RestingBP + Cholesterol + FastingBS + RestingECG + MaxHR + ExerciseAngina + Oldpeak + ST_Slope, data = train) %>%
+  step_dummy(all_nominal(), -all_outcomes())
+
+tree_model = decision_tree(cost_complexity = tune()) %>%
+  set_engine("rpart", model = TRUE) %>%
+  set_mode("classification")
+
+tree_grid = grid_regular(cost_complexity(),
+                         levels = 25)
+heart_wflow =
+  workflow() %>%
+  add_model(tree_model) %>%
+  add_recipe(heart_recipe)
+
+heart_res = 
+  heart_wflow %>%
+  tune_grid(
+    resamples = folds,
+    grid = tree_grid
+  )
+
+heart_res
+```
+
+```{r}
+best_tree = heart_res %>%
+  select_best("accuracy")
+
+best_tree
+```
+```{r}
+final_wf = 
+  heart_wflow %>%
+  finalize_workflow(best_tree)
+```
+
+```{r}
+final_fit =fit(final_wf, train)
+
+heart = final_fit %>%
+  pull_workflow_fit() %>%
+  pluck("fit")
+
+fancyRpartPlot(heart, tweak = 1.5)
+```
+
+```{r}
+heartpred = predict(final_fit, train, type = "class")
+head(heartpred)
+```
+
+```{r}
+confusionMatrix(heartpred$.pred_class,train$HeartDisease,positive ="Yes")
+```
+
+```{r}
+heartpred = predict(final_fit, test, type = "class")
+head(heartpred)
+```
+
+```{r}
+confusionMatrix(heartpred$.pred_class,test$HeartDisease,positive ="Yes")
+```
+

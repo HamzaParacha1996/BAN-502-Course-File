@@ -1,0 +1,66 @@
+---
+title: "Model Validation"
+output: html_document
+date: '2022-06-04'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r Libraries}
+library(tidyverse)
+library(lubridate)
+library(tidymodels)
+```
+
+
+```{r}
+
+library(readr)
+bike_cleaned_4 <- read_csv("Desktop/Grad School/BAN /Module 2/bike_cleaned-4.csv")
+View(bike_cleaned_4)
+
+```
+
+```{r}
+
+bike_cleaned_4 <- mutate(bike_cleaned_4, as.Date(dteday))
+
+bike_cleaned_4 <- bike_cleaned_4 %>%
+  mutate_if(sapply(bike_cleaned_4, is.character), as.factor)
+
+bike_cleaned_4 <- bike_cleaned_4 %>%
+  mutate(hr=as.factor(hr))
+```
+
+```{r}
+
+set.seed(1234)
+Bike_split = initial_split(bike_cleaned_4, prop = 0.70, strata = count)
+train = training(Bike_split)
+test = testing(Bike_split)
+
+```
+
+```{r}
+
+train2 <- lm(count ~ season + mnth + hr + holiday + weekday + temp + weathersit, data = train)
+
+summary(train2)
+
+```
+
+
+```{r}
+summary(test)$r.squared
+
+
+```
+

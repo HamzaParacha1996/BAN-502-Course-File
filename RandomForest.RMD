@@ -1,0 +1,135 @@
+---
+title: "Random Forest"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+library(caret)
+library(gridExtra)
+library(vip)
+library(ranger)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
+```{r}
+
+names(drug_data) = c("ID", "Age", "Gender", "Education", "Country", "Ethnicity","Nscore", "Escore", "Oscore", "Ascore", "Cscore", "Impulsive","SS", "Alcohol", "Amphet", "Amyl", "Benzos", "Caff", "Cannabis","Choc", "Coke", "Crack", "Ecstasy", "Heroin", "Ketamine", "Legalh","LSD", "Meth", "Mushrooms", "Nicotine", "Semer", "VSA")
+
+```
+
+```{r}
+drug_data[drug_data == "CL0"] = "No"
+drug_data[drug_data == "CL1"] = "No"
+drug_data[drug_data == "CL2"] = "Yes"
+drug_data[drug_data == "CL3"] = "Yes"
+drug_data[drug_data == "CL4"] = "Yes"
+drug_data[drug_data == "CL5"] = "Yes"
+drug_data[drug_data == "CL6"] = "Yes"
+
+
+```
+
+```{r}
+
+drug_clean = drug_data %>% mutate_at(vars(Age:Ethnicity), funs(as_factor)) %>%
+mutate(Age = factor(Age, labels = c("18_24", "25_34", "35_44", "45_54",
+"55_64", "65_"))) %>%
+mutate(Gender = factor(Gender, labels = c("Male", "Female"))) %>%
+mutate(Education = factor(Education, labels = c("Under16", "At16", "At17", "At18",
+"SomeCollege","ProfessionalCert",
+"Bachelors", "Masters",
+"Doctorate"))) %>%
+mutate(Country = factor(Country, labels = c("USA", "NewZealand", "Other", "Australia",
+"Ireland","Canada","UK"))) %>%
+mutate(Ethnicity = factor(Ethnicity, labels = c("Black", "Asian", "White",
+"White/Black", "Other",
+"White/Asian", "Black/Asian"))) %>%
+mutate_at(vars(Alcohol:VSA), funs(as_factor)) %>%
+select(-ID)
+
+
+```
+
+
+```{r}
+str(drug_clean)
+```
+
+```{r}
+drug_clean = drug_clean %>% 
+  select (!(Alcohol:Mushrooms)) %>%
+  select(!(Semer:VSA))
+```
+
+
+```{r}
+set.seed(1234)
+drug_split = initial_split(drug_clean, prop = 0.7, strata = Nicotine)
+train = training(drug_split)
+test = testing(drug_split)
+
+```
+
+```{r}
+
+set.seed(123)
+rf_folds = vfold_cv(train, v= 5)
+
+
+drug_recipe = recipe(Nicotine~., train) %>%
+  step_dummy(all_nominal(), -all_outcomes())
+
+rf_model = rand_forest(mtry = tune(), min_n = tune(), trees = 100) %>%
+  set_engine("ranger", importance = "permutation") %>%
+  set_mode("classification")
+
+drug_wflow = 
+  workflow() %>%
+  add_model(rf_model) %>%
+  add_recipe(drug_recipe)
+
+rf_grid = grid_regular(
+  mtry(range = c(2,10)),
+  min_n(range = c(5, 20)),
+  levels = 10
+)
+
+set.seed(123)
+drug_fit = tune_grid(
+  drug_wflow,
+  resamples = rf_folds,
+  grid = rf_grid
+)
+
+```
+
+```{r}
+drugpredrf = predict(drug_fit, train)
+head(drugpredrf)
+
+```
+
+```{r}
+confusionMatrix(drugpredrf$.pred_class, train$Nicotine,
+                positive= "Yes")
+```
+
+```{r}
+drugpredrf22 = predict(drug_fit, test)
+head(drugpredrf22)
+
+confusionMatrix(drugpredrf$.pred_class, test$Nicotine,
+                positive= "Yes")
+```
+

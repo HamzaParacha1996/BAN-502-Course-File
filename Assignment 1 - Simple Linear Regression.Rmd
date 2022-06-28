@@ -1,0 +1,54 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+library(GGally)
+library(lmtest)
+```
+
+```{r}
+air = airquality
+```
+
+```{r}
+
+air2 = air %>%
+  drop_na()
+
+```
+
+```{r}
+cor(air2$Ozone, air2$Solar.R)
+cor(air2$Ozone, air2$Wind)
+cor(air2$Ozone, air2$Temp)
+cor(air2$Ozone, air2$Month)
+cor(air2$Ozone, air2$Day)
+```
+
+```{r}
+ggplot(data = air2, aes( x = Temp, y = Ozone)) +
+  geom_point()
+```
+
+```{r}
+lm(air2$Ozone ~ air2$Temp)
+
+```
+
+```{r}
+Model <- lm(air2$Ozone ~ air2$Temp)
+summary(Model)
+```
+
+```{r}
+confint()
+```
+

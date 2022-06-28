@@ -1,0 +1,133 @@
+---
+title: "Multiple Linear Regression"
+output: html_document
+date: '2022-06-02'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+library(GGally)
+library(MASS)
+library(lubridate)
+library(lmtest)
+library(splines)
+
+
+```
+
+```{r}
+bike <- read_csv("Desktop/Grad School/BAN /Module 1/bike_cleaned-3.csv")
+View(bike)
+
+```
+
+```{r}
+bike = bike %>% mutate(dteday = mdy(dteday))
+
+bike = bike %>% mutate_if(is.character, as_factor)
+
+bike = bike %>% mutate(hr = as_factor(hr))
+
+```
+
+```{r}
+
+cor(bike$count, bike$windspeed)
+cor(bike$count, bike$hum)
+cor(bike$count, bike$atemp)
+cor(bike$count, bike$temp)
+
+
+```
+
+
+```{r}
+
+ggcorr(bike, label = "True", label_round = 2)
+
+
+```
+
+
+
+
+
+```{r}
+ggplot(bike, aes(x= season, y= count)) + geom_boxplot()
+
+```
+
+```{r}
+
+ames_bike = recipe(count ~ hr, bike)
+
+lm_model =
+  linear_reg() %>%
+  set_engine("lm")
+
+lm_wflow =
+  workflow() %>%
+  add_model(lm_model) %>%
+  add_recipe(ames_bike)
+
+lm.fit = fit(lm_wflow, bike)
+
+```
+
+```{r}
+summary(lm.fit$fit$fit$fit)
+```
+
+```{r}
+
+ggplot(bike, aes(x= count, y= hr)) + geom_point()
+
+
+```
+
+```{r}
+ames_bike2 = recipe(count ~ hr + temp, bike)
+
+lm_model =
+  linear_reg() %>%
+  set_engine("lm")
+
+lm_wflow =
+  workflow() %>%
+  add_model(lm_model) %>%
+  add_recipe(ames_bike2)
+
+lm.fit2 = fit(lm_wflow, bike)
+```
+
+```{r}
+summary(lm.fit2$fit$fit$fit)
+```
+
+
+```{r}
+
+ames_bike3 = recipe(count ~ temp + atemp, bike)
+
+lm_model =
+  linear_reg() %>%
+  set_engine("lm")
+
+lm_wflow =
+  workflow() %>%
+  add_model(lm_model) %>%
+  add_recipe(ames_bike3)
+
+lm_fit3 = fit(lm_wflow, bike)
+
+summary(lm_fit3$fit$fit$fit)
+```
+
+

@@ -1,0 +1,50 @@
+---
+title: "Missing Data"
+output: html_document
+date: '2022-06-09'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+library(mice)
+library(VIM)
+library(naniar)
+```
+
+```{r}
+vim_plot = aggr(class_grades, numbers = TRUE, prop = c(TRUE, FALSE),cex.axis=.7)
+```
+
+```{r}
+
+class_rowdel = class_grades %>% drop_na()
+
+
+```
+```{r}
+
+class_coldel = class_grades %>% select(-Midterm)
+
+```
+
+```{r}
+set.seed(123)
+imp_age = mice(class_grades, m= 5, method= 'pmm', printFlag=FALSE)
+summary(imp_age)
+skim(imp_age)
+```
+
+```{r}
+densityplot(imp_age, ~Midterm)
+```
+
+```{r}
+class_complete = complete(imp_age)
+summary(class_complete)
+```
+
